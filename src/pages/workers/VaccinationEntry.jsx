@@ -19,7 +19,7 @@ function VaccinationEntry() {
 
     const fetchVerifiedBeneficiaries = async () => {
       try {
-        const response = await axios.get("http://localhost:5000/api/worker/verified-beneficiaries", {
+        const response = await axios.get("api/worker/verified-beneficiaries", {
           headers: { Authorization: `Bearer ${token}` },
         });
         setBeneficiaries(response.data);
@@ -46,7 +46,7 @@ function VaccinationEntry() {
     if (photo) formData.append("photo", photo);
 
     try {
-      await axios.post("http://localhost:5000/api/worker/vaccinate", formData, {
+      await axios.post("api/worker/vaccinate", formData, {
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "multipart/form-data",
