@@ -73,116 +73,117 @@ return (
         )}
       </div>
     </div>
-    ‌
-    {/* Growth Monitoring Assessment Charts Section */}
-    <section className="py-12 bg-gradient-to-b from-white to-blue-50 rounded-1xl mt-10 shadow-md">
-      <div className="max-w-7xl mx-auto text-center px-6">
-        <h2 className="text-3xl md:text-4xl font-bold text-indigo-800 mb-10">
-          Growth Monitoring Assessment Charts
-        </h2>
-        ‌
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
-          {/* Stunted Card */}
-          <div className="bg-[#C8D64A] rounded-[4rem] shadow-xl flex flex-col items-center text-center py-8 px-4">
-            <img
-              src="https://www.poshantracker.in/images/NewPoshanCalculator/stunted.svg"
-              alt="Stunted"
-              className="w-40 h-40 mb-4"
-            />
-            <h3 className="text-xl font-bold text-indigo-900">Stunted</h3>
-            <p className="text-indigo-900 mt-1">
-              (Height for Age) <br /> 0 months to 6 years
-            </p>
-            <a
-              href="#"
-              className="text-indigo-900 font-semibold mt-4 flex items-center justify-center gap-2 hover:text-indigo-700 transition-all"
-            >
-              Download
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-5 w-5"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
+
+      {/* Growth Monitoring Assessment Charts Section */}
+      <section className="py-12 bg-gradient-to-b from-white to-blue-50 rounded-3xl mt-10 shadow-md">
+        <div className="max-w-7xl mx-auto text-center px-6">
+          <h2 className="text-3xl md:text-4xl font-bold text-indigo-800 mb-10">
+            Growth Monitoring Assessment Charts
+          </h2>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
+            {/* Stunted Card */}
+            <div className="bg-[#C8D64A] rounded-[4rem] shadow-xl flex flex-col items-center text-center py-8 px-4">
+              <img
+                src="https://www.poshantracker.in/images/NewPoshanCalculator/stunted.svg"
+                alt="Stunted"
+                className="w-40 h-40 mb-4"
+              />
+              <h3 className="text-xl font-bold text-indigo-900">Stunted</h3>
+              <p className="text-indigo-900 mt-1">
+                (Height for Age) <br /> 0 months to 6 years
+              </p>
+              <a
+                href="#"
+                className="text-indigo-900 font-semibold mt-4 flex items-center justify-center gap-2 hover:text-indigo-700 transition-all"
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5m0 0l5-5m-5 5V4"
-                />
-              </svg>
-            </a>
-          </div>
-          ‌
-          {/* Wasted Card */}
-          <div className="bg-[#F7B538] rounded-[4rem] shadow-xl flex flex-col items-center text-center py-8 px-4">
-            <img
-              src="https://www.poshantracker.in/images/NewPoshanCalculator/wasting.svg"
-              alt="Wasted"
-              className="w-40 h-40 mb-4"
-            />
-            <h3 className="text-xl font-bold text-indigo-900">Wasted</h3>
-            <p className="text-indigo-900 mt-1">
-              (Weight for Height) <br /> 0 months to 5 years
-            </p>
-            <a
-              href="#"
-              className="text-indigo-900 font-semibold mt-4 flex items-center justify-center gap-2 hover:text-indigo-700 transition-all"
-            >
-              Download
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-5 w-5"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
+                Download
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-5 w-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5m0 0l5-5m-5 5V4"
+                  />
+                </svg>
+              </a>
+            </div>
+
+            {/* Wasted Card */}
+            <div className="bg-[#F7B538] rounded-[4rem] shadow-xl flex flex-col items-center text-center py-8 px-4">
+              <img
+                src="https://www.poshantracker.in/images/NewPoshanCalculator/wasting.svg"
+                alt="Wasted"
+                className="w-40 h-40 mb-4"
+              />
+              <h3 className="text-xl font-bold text-indigo-900">Wasted</h3>
+              <p className="text-indigo-900 mt-1">
+                (Weight for Height) <br /> 0 months to 5 years
+              </p>
+              <a
+                href="#"
+                className="text-indigo-900 font-semibold mt-4 flex items-center justify-center gap-2 hover:text-indigo-700 transition-all"
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5m0 0l5-5m-5 5V4"
-                />
-              </svg>
-            </a>
-          </div>
-          ‌
-          {/* Underweight Card */}
-          <div className="bg-[#EB5E7A] rounded-[4rem] shadow-xl flex flex-col items-center text-center py-8 px-4">
-            <img
-              src="https://www.poshantracker.in/images/NewPoshanCalculator/underweight.svg"
-              alt="Underweight"
-              className="w-40 h-40 mb-4"
-            />
-            <h3 className="text-xl font-bold text-indigo-900">Underweight</h3>
-            <p className="text-indigo-900 mt-1">
-              (Weight for Age) <br /> 0 months to 6 years
-            </p>
-            <a
-              href="#"
-              className="text-indigo-900 font-semibold mt-4 flex items-center justify-center gap-2 hover:text-indigo-700 transition-all"
-            >
-              Download
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-5 w-5"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
+                Download
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-5 w-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5m0 0l5-5m-5 5V4"
+                  />
+                </svg>
+              </a>
+            </div>
+
+            {/* Underweight Card */}
+            <div className="bg-[#EB5E7A] rounded-[4rem] shadow-xl flex flex-col items-center text-center py-8 px-4">
+              <img
+                src="https://www.poshantracker.in/images/NewPoshanCalculator/underweight.svg"
+                alt="Underweight"
+                className="w-40 h-40 mb-4"
+              />
+              <h3 className="text-xl font-bold text-indigo-900">Underweight</h3>
+              <p className="text-indigo-900 mt-1">
+                (Weight for Age) <br /> 0 months to 6 years
+              </p>
+              <a
+                href="#"
+                className="text-indigo-900 font-semibold mt-4 flex items-center justify-center gap-2 hover:text-indigo-700 transition-all"
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5m0 0l5-5m-5 5V4"
-                />
-              </svg>
-            </a>
+                Download
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-5 w-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5m0 0l5-5m-5 5V4"
+                  />
+                </svg>
+              </a>
+            </div>
           </div>
         </div>
-      </div>
-    </section>
+      </section>
+
 
 
     {/* bottom section details about teeka sarthi */}
