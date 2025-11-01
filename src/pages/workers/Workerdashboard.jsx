@@ -26,13 +26,22 @@ import {
   Award,
   Home,
   Bell,
-  Shield,
+  Shield, // <-- FIX 2: SHIELD IMPORTED
   Users,
   Briefcase,
   Heart,
+  Trash2, // Added for Delete functionality
 } from "lucide-react";
 import Navbar from "../../components/Navbar";
 import axios from "../../api/axios";
+
+// Helper function to format date to YYYY-MM-DD for input[type=date]
+const formatDate = (dateString) => {
+  if (!dateString) return "";
+  const date = new Date(dateString);
+  // Get date in YYYY-MM-DD format, handling potential timezone issues
+  return date.toISOString().split("T")[0];
+};
 
 const WorkerDashboard = () => {
   const navigate = useNavigate();
@@ -45,13 +54,21 @@ const WorkerDashboard = () => {
   const [selectedSchedule, setSelectedSchedule] = useState(null);
   const [location, setLocation] = useState("Getting location...");
   const [uploadedPhoto, setUploadedPhoto] = useState(null);
-  const [stockData, setStockData] = useState([]); // Initial state is an empty array
+  const [stockData, setStockData] = useState([]); // Array to hold all stock items
+  const [newStock, setNewStock] = useState({
+    // State for adding new stock
+    name: "",
+    currentStock: 0,
+    usedStock: 0,
+    receivedStock: 0,
+    expiryDate: formatDate(new Date().toISOString()), // Default to today
+  });
   const [notification, setNotification] = useState({
     show: false,
     message: "",
     type: "",
   });
-const [currentTime, setCurrentTime] = useState(new Date());
+  const [currentTime, setCurrentTime] = useState(new Date());
 
   const scheduleData = [
     {
@@ -95,8 +112,6 @@ const [currentTime, setCurrentTime] = useState(new Date());
       priority: "low",
     },
   ];
-
-  // Removed initialStockData
 
   const stats = [
     {
@@ -181,11 +196,10 @@ const [currentTime, setCurrentTime] = useState(new Date());
     );
   };
 
-  // --- Beneficiary/Approval Logic (Unchanged except for axios import) ---
+  // --- Beneficiary/Approval Logic (Unchanged) ---
   const fetchPendingApprovals = async () => {
     try {
       const response = await axios.get("/api/beneficiaries/pending");
-      // Assuming response.data is an array of beneficiaries
       setPendingApprovals(response.data);
     } catch (error) {
       console.error("Error fetching beneficiaries:", error);
@@ -195,15 +209,12 @@ const [currentTime, setCurrentTime] = useState(new Date());
 
   const handleVerifyBeneficiary = async (beneficiaryId) => {
     try {
-      // Corrected to use axios.post and remove the unnecessary 'method' and 'body' in the config object for axios.
       const response = await axios.post(`api/worker/verify/${beneficiaryId}`, {
         adharVerified: true,
         remarks: "Verified during field visit",
         workerName: "John Doe",
       });
 
-      // Check for successful response status (e.g., 200, 201)
-      // Axios throws an error for 4xx/5xx, so we assume success if no error is thrown.
       setPendingApprovals((prev) => prev.filter((b) => b.id !== beneficiaryId));
       setSelectedBeneficiary(null);
       setShowApprovalModal(false);
@@ -248,14 +259,26 @@ const [currentTime, setCurrentTime] = useState(new Date());
     setSelectedSchedule(null);
   };
 
-  
+  // --- 📦 Vaccine Stock API & Logic Integrations ---
+
+  /**
+   * Fetches all vaccine stock data from the backend (GET /api/stock).
+   */
   const fetchStockData = async () => {
     try {
       const response = await axios.get("/api/stock");
-      // The backend returns a list of VaccineStock objects.
-      console.log(response.data)
-      setStockData(response.data);
-      console.log("Successfully fetched stock:", response.data);
+      // Convert expiryDate to YYYY-MM-DD format for input[type=date] consistency
+      const formattedData = response.data.map((stock) => ({
+        ...stock,
+        // Ensure that date is handled safely for the date input field
+        expiryDate: formatDate(stock.expiryDate) || "",
+        // Ensure numbers are numbers, default to 0
+        currentStock: parseInt(stock.currentStock) || 0,
+        usedStock: parseInt(stock.usedStock) || 0,
+        receivedStock: parseInt(stock.receivedStock) || 0,
+      }));
+      setStockData(formattedData);
+      console.log("Successfully fetched stock:", formattedData);
     } catch (error) {
       console.error("Error fetching stock data:", error);
       showNotification("Error fetching stock data", "error");
@@ -264,7 +287,7 @@ const [currentTime, setCurrentTime] = useState(new Date());
 
   /**
    * Updates the local state for a specific stock item.
-   * The fields 'current', 'used', and 'received' are parsed as integers.
+   * Fields 'currentStock', 'usedStock', and 'receivedStock' are parsed as integers.
    */
   const updateLocalStock = (vaccineId, field, value) => {
     setStockData((prev) =>
@@ -272,9 +295,8 @@ const [currentTime, setCurrentTime] = useState(new Date());
         vaccine.id === vaccineId
           ? {
               ...vaccine,
-              [field]: field === "expiry" ? value : parseInt(value) || 0,
-              // Automatically update status based on new 'current' value (or ensure backend handles it)
-              // For now, we rely on a manual check/backend for a proper 'status' update
+              // Use specific field names from the backend DTO/Entity
+              [field]: field === "expiryDate" ? value : parseInt(value) || 0,
             }
           : vaccine
       )
@@ -282,32 +304,85 @@ const [currentTime, setCurrentTime] = useState(new Date());
   };
 
   /**
-   * Submits the updated stock data for all items to the backend.
-   * Endpoint: PUT /api/stock/{id}
+   * Submits the updated stock data for all items to the backend (PUT /api/stock/{id}).
    */
   const submitStockUpdate = async () => {
     try {
-      // Use Promise.all to send update requests for all modified stock items concurrently
       const updatePromises = stockData.map((vaccine) => {
-        // We use PUT for full replacement of the stock object
+        // Send the entire updated vaccine object (PUT)
         return axios.put(`/api/stock/${vaccine.id}`, vaccine);
       });
 
       await Promise.all(updatePromises);
       showNotification("Stock updated successfully!");
       setShowStockModal(false);
-      fetchStockData(); // Re-fetch to confirm changes and get new statuses
+      fetchStockData(); // Re-fetch to confirm changes
     } catch (error) {
       console.error("Error submitting stock update:", error);
       showNotification("Failed to submit stock update", "error");
     }
   };
 
+  /**
+   * Handles saving a new stock item (POST /api/stock).
+   */
+  const submitNewStock = async (e) => {
+    e.preventDefault();
+    try {
+      // Ensure numerical fields are sent as numbers (though backend can handle string-to-int conversion)
+      const dataToSend = {
+        ...newStock,
+        currentStock: parseInt(newStock.currentStock) || 0,
+        usedStock: parseInt(newStock.usedStock) || 0,
+        receivedStock: parseInt(newStock.receivedStock) || 0,
+      };
+
+      const response = await axios.post("/api/stock", dataToSend);
+
+      // Format the new data for the local state before adding it
+      const addedStock = {
+        ...response.data,
+        expiryDate: formatDate(response.data.expiryDate),
+      };
+
+      setStockData((prev) => [...prev, addedStock]);
+      setNewStock({
+        name: "",
+        currentStock: 0,
+        usedStock: 0,
+        receivedStock: 0,
+        expiryDate: formatDate(new Date().toISOString()),
+      });
+      showNotification(`New stock '${response.data.name}' added successfully!`);
+    } catch (error) {
+      console.error("Error submitting new stock:", error);
+      showNotification("Failed to add new stock", "error");
+    }
+  };
+
+  /**
+   * Handles deleting a stock item (DELETE /api/stock/{id}).
+   */
+  const handleDeleteStock = async (vaccineId) => {
+    if (!window.confirm("Are you sure you want to delete this stock item?")) {
+      return;
+    }
+    try {
+      await axios.delete(`/api/stock/${vaccineId}`);
+      setStockData((prev) => prev.filter((v) => v.id !== vaccineId));
+      showNotification("Stock item deleted successfully!", "error");
+    } catch (error) {
+      console.error("Error deleting stock:", error);
+      showNotification("Failed to delete stock item", "error");
+    }
+  };
+
+  /**
+   * Generates a mock stock report (FIX 1: Re-added missing function).
+   */
   const generatePDFReport = () => {
     const reportData = {
       date: new Date().toISOString().split("T")[0],
-      // This part is client-side mock data; a real implementation would
-      // likely involve a backend endpoint to generate and return a PDF file.
       worker: "John Doe",
       workerId: "HW001",
       stocks: stockData,
@@ -324,7 +399,7 @@ const [currentTime, setCurrentTime] = useState(new Date());
     document.body.appendChild(downloadAnchorNode);
     downloadAnchorNode.click();
     downloadAnchorNode.remove();
-    showNotification("Stock report downloaded! (JSON Mock)"); // Changed message to reflect it's a mock download
+    showNotification("Stock report downloaded! (JSON Mock)");
   };
 
   // --- Helper Functions (Unchanged) ---
@@ -341,9 +416,14 @@ const [currentTime, setCurrentTime] = useState(new Date());
     }
   };
 
-  // NOTE: This status logic needs to be consistent with the backend's 'status' field.
-  // Assuming the backend also uses 'low' (current < 75) or a similar logic.
   const getStockStatus = (stock) => {
+    if (
+      stock.currentStock === undefined ||
+      stock.currentStock === null ||
+      stock.currentStock < 0
+    ) {
+      return { color: "text-gray-500", bg: "bg-gray-100", label: "Unknown" };
+    }
     if (stock.currentStock < 75)
       return { color: "text-red-500", bg: "bg-red-100", label: "Low Stock" };
     if (stock.currentStock < 150)
@@ -360,20 +440,6 @@ const [currentTime, setCurrentTime] = useState(new Date());
             <Home className="w-6 h-6 text-indigo-500" />
             Worker Dashboard
           </h1>
-
-          {/* <div className="flex items-center gap-6 text-gray-700 font-medium">
-            <button
-              onClick={() => setShowApprovalModal(true)}
-              className="flex items-center gap-2 hover:text-indigo-600"
-            >
-              <Bell className="w-5 h-5" /> Approvals
-              {pendingApprovals.length > 0 && (
-                <span className="inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-red-100 bg-red-600 rounded-full">
-                  {pendingApprovals.length}
-                </span>
-              )}
-            </button>
-          </div> */}
         </div>
       </nav>
 
@@ -596,11 +662,23 @@ const [currentTime, setCurrentTime] = useState(new Date());
                           <div className="w-10 h-10 bg-purple-500 rounded-lg flex items-center justify-center">
                             <Shield className="w-5 h-5 text-white" />
                           </div>
-                          <span
-                            className={`px-3 py-1 rounded-full text-xs font-semibold ${status.bg} ${status.color}`}
-                          >
-                            {status.label}
-                          </span>
+                          <div className="flex items-center gap-2">
+                            {/* Delete Button (Integration) */}
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation(); // Prevent card click logic
+                                handleDeleteStock(stock.id);
+                              }}
+                              className="text-red-500 hover:text-red-700 p-1 rounded-full hover:bg-red-100 transition"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                            <span
+                              className={`px-3 py-1 rounded-full text-xs font-semibold ${status.bg} ${status.color}`}
+                            >
+                              {status.label}
+                            </span>
+                          </div>
                         </div>
                         <div className="text-3xl font-bold text-purple-900 mb-2">
                           {stock.currentStock}
@@ -630,7 +708,7 @@ const [currentTime, setCurrentTime] = useState(new Date());
                   className="bg-gradient-to-r from-purple-500 to-pink-500 text-white py-4 px-6 rounded-2xl font-semibold text-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 flex items-center justify-center gap-3"
                 >
                   <Plus className="w-5 h-5" />
-                  Update Stock
+                  Update/Add Stock
                 </button>
                 <button
                   onClick={generatePDFReport}
@@ -645,7 +723,7 @@ const [currentTime, setCurrentTime] = useState(new Date());
         </div>
       </div>
 
-      {/* Approval Modal (Unchanged content) */}
+      {/* Approval Modal (Unchanged) */}
       {showApprovalModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-3xl p-8 max-w-4xl w-full max-h-[90vh] overflow-y-auto">
@@ -867,12 +945,14 @@ const [currentTime, setCurrentTime] = useState(new Date());
         </div>
       )}
 
-      {/* Stock Modal (Updated onChange handler) */}
+      {/* Stock Modal (Updated with Add and Editable fields) */}
       {showStockModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-3xl p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-3xl p-8 max-w-4xl w-full max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold text-gray-800">Update Stock</h2>
+              <h2 className="text-3xl font-bold text-gray-800">
+                Manage Vaccine Stock
+              </h2>
               <button
                 onClick={() => setShowStockModal(false)}
                 className="text-gray-500 hover:text-gray-700"
@@ -881,13 +961,113 @@ const [currentTime, setCurrentTime] = useState(new Date());
               </button>
             </div>
 
+            {/* --- Add New Stock Section (POST /api/stock) --- */}
+            <div className="border-2 border-dashed border-purple-300 rounded-xl p-6 mb-8 bg-purple-50">
+              <h3 className="text-xl font-bold mb-4 text-purple-800 flex items-center gap-2">
+                <Plus className="w-5 h-5" /> Add New Vaccine Stock
+              </h3>
+              <form
+                onSubmit={submitNewStock}
+                className="grid grid-cols-1 md:grid-cols-5 gap-4"
+              >
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Name
+                  </label>
+                  <input
+                    type="text"
+                    value={newStock.name}
+                    onChange={(e) =>
+                      setNewStock((prev) => ({ ...prev, name: e.target.value }))
+                    }
+                    placeholder="e.g., COVAX-19"
+                    required
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Current
+                  </label>
+                  <input
+                    type="number"
+                    value={newStock.currentStock}
+                    onChange={(e) =>
+                      setNewStock((prev) => ({
+                        ...prev,
+                        currentStock: parseInt(e.target.value) || 0,
+                      }))
+                    }
+                    min="0"
+                    required
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  />
+                </div>
+                {/* Hiding 'Used Today' for new stock creation simplicity - can be added later */}
+                <div className="hidden">
+                  <input type="hidden" value={newStock.usedStock} />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Received
+                  </label>
+                  <input
+                    type="number"
+                    value={newStock.receivedStock}
+                    onChange={(e) =>
+                      setNewStock((prev) => ({
+                        ...prev,
+                        receivedStock: parseInt(e.target.value) || 0,
+                      }))
+                    }
+                    min="0"
+                    required
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Expiry Date
+                  </label>
+                  <input
+                    type="date"
+                    value={newStock.expiryDate}
+                    onChange={(e) =>
+                      setNewStock((prev) => ({
+                        ...prev,
+                        expiryDate: e.target.value,
+                      }))
+                    }
+                    required
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  />
+                </div>
+                <div className="md:col-span-5 flex justify-end">
+                  <button
+                    type="submit"
+                    className="bg-purple-600 text-white py-3 px-6 rounded-xl font-semibold hover:bg-purple-700 transition-colors"
+                  >
+                    Add Stock Item
+                  </button>
+                </div>
+              </form>
+            </div>
+
+            {/* --- Update Existing Stock Section (PUT /api/stock/{id}) --- */}
+            <h3 className="text-xl font-bold mb-4 text-gray-800">
+              Update Existing Stock Items ({stockData.length})
+            </h3>
+
             <div className="space-y-6">
               {stockData.map((vaccine) => (
-                <div key={vaccine.id} className="border rounded-xl p-6">
-                  <h3 className="text-lg font-semibold mb-4 text-purple-600">
+                <div
+                  key={vaccine.id}
+                  className="border rounded-xl p-6 bg-gray-50"
+                >
+                  <h3 className="text-lg font-bold mb-4 text-purple-600">
                     {vaccine.name}
                   </h3>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Current Stock
@@ -895,14 +1075,14 @@ const [currentTime, setCurrentTime] = useState(new Date());
                       <input
                         type="number"
                         value={vaccine.currentStock}
-                        // Changed from updateStock to updateLocalStock
                         onChange={(e) =>
                           updateLocalStock(
                             vaccine.id,
-                            "current",
+                            "currentStock", // Correct field name
                             e.target.value
                           )
                         }
+                        min="0"
                         className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                       />
                     </div>
@@ -913,10 +1093,14 @@ const [currentTime, setCurrentTime] = useState(new Date());
                       <input
                         type="number"
                         value={vaccine.usedStock}
-                        // Changed from updateStock to updateLocalStock
                         onChange={(e) =>
-                          updateLocalStock(vaccine.id, "used", e.target.value)
+                          updateLocalStock(
+                            vaccine.id,
+                            "usedStock", // Correct field name
+                            e.target.value
+                          )
                         }
+                        min="0"
                         className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                       />
                     </div>
@@ -927,14 +1111,14 @@ const [currentTime, setCurrentTime] = useState(new Date());
                       <input
                         type="number"
                         value={vaccine.receivedStock}
-                        // Changed from updateStock to updateLocalStock
                         onChange={(e) =>
                           updateLocalStock(
                             vaccine.id,
-                            "received",
+                            "receivedStock", // Correct field name
                             e.target.value
                           )
                         }
+                        min="0"
                         className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                       />
                     </div>
@@ -945,9 +1129,12 @@ const [currentTime, setCurrentTime] = useState(new Date());
                       <input
                         type="date"
                         value={vaccine.expiryDate}
-                        // Changed from updateStock to updateLocalStock
                         onChange={(e) =>
-                          updateLocalStock(vaccine.id, "expiry", e.target.value)
+                          updateLocalStock(
+                            vaccine.id,
+                            "expiryDate", // Correct field name
+                            e.target.value
+                          )
                         }
                         className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                       />
@@ -957,12 +1144,12 @@ const [currentTime, setCurrentTime] = useState(new Date());
               ))}
             </div>
 
-            <div className="flex gap-4 mt-8">
+            <div className="flex gap-4 mt-8 pt-4 border-t border-gray-200">
               <button
                 onClick={submitStockUpdate}
                 className="flex-1 bg-gradient-to-r from-purple-500 to-pink-500 text-white py-3 px-6 rounded-xl font-semibold hover:shadow-lg transition-all duration-300"
               >
-                Submit Update
+                Submit All Updates
               </button>
               <button
                 onClick={() => setShowStockModal(false)}
