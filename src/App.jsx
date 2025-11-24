@@ -5,7 +5,6 @@ import LandingPage from './pages/LandingPage';
 import AuthPage from "./pages/AuthPage";
 import ForgotPassword from './pages/ForgotPassword';
 import DashboardHome from './components/DashboardHome';
-import Header from './components/Header';
 import SchedulePage from './pages/SchedulePage';
 import Footer from "./components/Footer";
 import Navbar from './components/Navbar';
@@ -23,112 +22,116 @@ import Nav from './components/Nav';
 function App() {
   return (
     <Routes>
-      <Route path="/" element={<LandingPage />} />
+      <Route
+        path="/"
+        element={
+          <>
+            <LandingPage />
+            <Footer />
+          </>
+        }
+      />
 
-      <Route 
-        path="/login" 
+      <Route
+        path="/login"
         element={
           <>
             <AuthPage />
-            <Header />
+            <Footer />
           </>
-        } 
+        }
       />
 
-      <Route 
-        path="/register" 
+      <Route
+        path="/register"
         element={
           <>
             <AuthPage />
-            <Header />
+            <Footer />
           </>
-        } 
+        }
       />
 
-      <Route 
-        path="/workerlogin" 
+      <Route
+        path="/workerlogin"
         element={
           <>
             <WorkerLogin />
-            <Header />
+            <Footer />
           </>
-        } 
+        }
       />
 
-      <Route 
-        path="/worker/dashboard" 
+      <Route
+        path="/worker/dashboard"
         element={
           <>
-         
             <WorkerDashboard />
-            <Header />
+            <Footer />
           </>
-        } 
+        }
       />
-      <Route 
-        path="/worker/pending-beneficiaries" 
+      <Route
+        path="/worker/pending-beneficiaries"
         element={
           <>
-           <PendingBeneficiaries />
-            <Header />
+            <PendingBeneficiaries />
+            <Footer />
           </>
-        } 
+        }
       />
 
-      <Route 
-        path="/add-beneficiary" 
+      <Route
+        path="/add-beneficiary"
         element={
           <>
-        <Nav/>
-           <AddBeneficiarySelection />
-            <Header />
+            <Nav />
+            <AddBeneficiarySelection />
+            <Footer />
           </>
-        } 
+        }
       />
-      
-<Route 
-path="/locate-center"
-element={
-  <>
-<Nav/>
-<LocateAnganwadiCenter />
-<Header/>
-</>
 
-} 
-
-/>
-<Route
- path="/beneficiary-info"
- element={
-  <>
-  <Nav/>
- <PersonalInformationForm />
- <Header/>
- </>
- 
- } 
- />
+      <Route
+        path="/locate-center"
+        element={
+          <>
+            <Nav />
+            <LocateAnganwadiCenter />
+            <Footer />
+          </>
+        }
+      />
+      <Route
+        path="/beneficiary-info"
+        element={
+          <>
+            <Nav />
+            <PersonalInformationForm />
+            <Footer />
+          </>
+        }
+      />
 
       {/* <Route path="/worker/vaccination-entry" element={<VaccinationEntry />} /> */}
 
-      <Route 
-        path="/forgot-password" 
+      <Route
+        path="/forgot-password"
         element={
           <>
             <ForgotPassword />
-            <Header />
+            <Footer />
           </>
-        } 
+        }
       />
 
       <Route
         path="/dashboard"
         element={
           <>
-            <Navbar/>
+            <Navbar />
             <DashboardHome />
-            <Header />
+            <Footer />
           </>
         }
       />
@@ -137,9 +140,9 @@ element={
         path="/dashboard/register"
         element={
           <>
-            <Navbar/>
+            <Navbar />
             <DashboardHome />
-            <Header />
+            <Footer />
           </>
         }
       />
