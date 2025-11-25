@@ -236,12 +236,35 @@ const WorkerDashboard = () => {
       showNotification("An error occurred while verifying", "error");
     }
   };
+  const handleRejectBeneficiary = async (beneficiaryId) => {
+    try {
+      await axios.post(`api/worker/reject/${beneficiaryId}`, {
+        adharVerified: false,
+        remarks: "Verified during field visit",
+        workerName: worker_name,
+      });
+
+      setPendingApprovals((prev) => prev.filter((b) => b.id !== beneficiaryId));
+      setSelectedBeneficiary(null);
+      setShowApprovalModal(false);
+      showNotification("Beneficiary Rejected successfully!");
+    } catch (error) {
+      console.error(error);
+      showNotification("An error occurred while Rejecting", "error");
+    }
+  };
+
 
   const handleApproval = (beneficiaryId, action) => {
     if (action === "approve") {
       handleVerifyBeneficiary(beneficiaryId);
+      setPendingApprovals((prev) => prev.filter((b) => b.id !== beneficiaryId));
+      setSelectedBeneficiary(null);
+      setShowApprovalModal(false);
+      showNotification("Beneficiary rejected successfully!");
     } else {
       // Handle Reject Logic
+      handleRejectBeneficiary(beneficiaryId);
       setPendingApprovals((prev) => prev.filter((b) => b.id !== beneficiaryId));
       setSelectedBeneficiary(null);
       setShowApprovalModal(false);
@@ -616,645 +639,636 @@ const WorkerDashboard = () => {
                   </>
                 )}
               </button>
-              </div>
+            </div>
 
-              {/* Stock Report Card */}
-              <div className="bg-white/80 backdrop-blur-xl rounded-3xl p-8 shadow-2xl border border-white/20 hover:shadow-3xl transition-all duration-300 mt-8">
-                <div className="flex items-center justify-between mb-8">
-                  <div className="flex items-center gap-4">
-                    <div className="w-14 h-14 bg-gradient-to-br from-purple-500 to-pink-500 rounded-2xl flex items-center justify-center shadow-lg">
-                      <Package className="w-7 h-7 text-white" />
-                    </div>
-                    <div>
-                      <h3 className="text-2xl font-bold text-gray-900">
-                        Vaccine Inventory
-                      </h3>
-                      <p className="text-gray-900">
-                        Current stock levels & status
-                      </p>
-                    </div>
+            {/* Stock Report Card */}
+            <div className="bg-white/80 backdrop-blur-xl rounded-3xl p-8 shadow-2xl border border-white/20 hover:shadow-3xl transition-all duration-300 mt-8">
+              <div className="flex items-center justify-between mb-8">
+                <div className="flex items-center gap-4">
+                  <div className="w-14 h-14 bg-gradient-to-br from-purple-500 to-pink-500 rounded-2xl flex items-center justify-center shadow-lg">
+                    <Package className="w-7 h-7 text-white" />
                   </div>
-                </div>
-
-                {stockData.length > 0 ? (
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                    {stockData.map((stock) => {
-                      const status = getStockStatus(stock);
-                      return (
-                        <div
-                          key={stock.id}
-                          className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl p-6 border border-purple-200"
-                        >
-                          <div className="flex items-center justify-between mb-4">
-                            <div className="w-10 h-10 bg-purple-500 rounded-lg flex items-center justify-center">
-                              <Shield className="w-5 h-5 text-white" />
-                            </div>
-                            <div className="flex items-center gap-2">
-                              {/* Delete Button */}
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleDeleteStock(stock.id);
-                                }}
-                                className="text-red-500 hover:text-red-700 p-1 rounded-full hover:bg-red-100 transition"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                              <span
-                                className={`px-3 py-1 rounded-full text-xs font-semibold ${status.bg} ${status.color}`}
-                              >
-                                {status.label}
-                              </span>
-                            </div>
-                          </div>
-                          <div className="text-3xl font-bold text-purple-900 mb-2">
-                            {stock.currentStock}
-                          </div>
-                          <div className="text-sm font-semibold text-gray-900 mb-1">
-                            {stock.name}
-                          </div>
-                          <div className="text-xs text-gray-900">
-                            Expires: {stock.expiryDate}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <div className="text-center py-8 text-gray-500">
-                    <Package className="w-10 h-10 mx-auto mb-3" />
-                    <p>
-                      No stock data available. Try refreshing or adding new
-                      stock.
+                  <div>
+                    <h3 className="text-2xl font-bold text-gray-900">
+                      Vaccine Inventory
+                    </h3>
+                    <p className="text-gray-900">
+                      Current stock levels & status
                     </p>
                   </div>
-                )}
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <button
-                    onClick={() => setShowStockModal(true)}
-                    className="bg-gradient-to-r from-purple-500 to-pink-500 text-white py-4 px-6 rounded-2xl font-semibold text-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 flex items-center justify-center gap-3"
-                  >
-                    <Plus className="w-5 h-5" />
-                    Update/Add Stock
-                  </button>
-                  <button
-                    onClick={generatePDFReport}
-                    className="bg-gradient-to-r from-gray-600 to-gray-700 text-white py-4 px-6 rounded-2xl font-semibold text-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 flex items-center justify-center gap-3"
-                  >
-                    <Download className="w-5 h-5" />
-                    Generate Report
-                  </button>
                 </div>
+              </div>
+
+              {stockData.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                  {stockData.map((stock) => {
+                    const status = getStockStatus(stock);
+                    return (
+                      <div
+                        key={stock.id}
+                        className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl p-6 border border-purple-200"
+                      >
+                        <div className="flex items-center justify-between mb-4">
+                          <div className="w-10 h-10 bg-purple-500 rounded-lg flex items-center justify-center">
+                            <Shield className="w-5 h-5 text-white" />
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {/* Delete Button */}
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteStock(stock.id);
+                              }}
+                              className="text-red-500 hover:text-red-700 p-1 rounded-full hover:bg-red-100 transition"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                            <span
+                              className={`px-3 py-1 rounded-full text-xs font-semibold ${status.bg} ${status.color}`}
+                            >
+                              {status.label}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="text-3xl font-bold text-purple-900 mb-2">
+                          {stock.currentStock}
+                        </div>
+                        <div className="text-sm font-semibold text-gray-900 mb-1">
+                          {stock.name}
+                        </div>
+                        <div className="text-xs text-gray-900">
+                          Expires: {stock.expiryDate}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  <Package className="w-10 h-10 mx-auto mb-3" />
+                  <p>
+                    No stock data available. Try refreshing or adding new stock.
+                  </p>
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <button
+                  onClick={() => setShowStockModal(true)}
+                  className="bg-gradient-to-r from-purple-500 to-pink-500 text-white py-4 px-6 rounded-2xl font-semibold text-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 flex items-center justify-center gap-3"
+                >
+                  <Plus className="w-5 h-5" />
+                  Update/Add Stock
+                </button>
+                <button
+                  onClick={generatePDFReport}
+                  className="bg-gradient-to-r from-gray-600 to-gray-700 text-white py-4 px-6 rounded-2xl font-semibold text-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 flex items-center justify-center gap-3"
+                >
+                  <Download className="w-5 h-5" />
+                  Generate Report
+                </button>
               </div>
             </div>
           </div>
         </div>
+      </div>
 
-        {/* --- MODALS --- */}
+      {/* --- MODALS --- */}
 
-        {/* 1. APPROVAL MODAL */}
-        {showApprovalModal && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-            <div className="bg-white rounded-3xl p-8 max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
-              {/* Modal Header */}
-              <div className="flex justify-between items-center mb-6 border-b border-gray-100 pb-4">
-                <div>
-                  <h2 className="text-2xl font-bold text-gray-800">
-                    Pending Approvals
-                  </h2>
-                  <p className="text-sm text-gray-500">
-                    Verify beneficiary details against their documents
-                  </p>
-                </div>
-                <button
-                  onClick={() => setShowApprovalModal(false)}
-                  className="text-gray-400 hover:text-gray-600 bg-gray-50 p-2 rounded-full transition"
-                >
-                  <X className="w-6 h-6" />
-                </button>
+      {/* 1. APPROVAL MODAL */}
+      {showApprovalModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+          <div className="bg-white rounded-3xl p-8 max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
+            {/* Modal Header */}
+            <div className="flex justify-between items-center mb-6 border-b border-gray-100 pb-4">
+              <div>
+                <h2 className="text-2xl font-bold text-gray-800">
+                  Pending Approvals
+                </h2>
+                <p className="text-sm text-gray-500">
+                  Verify beneficiary details against their documents
+                </p>
               </div>
+              <button
+                onClick={() => setShowApprovalModal(false)}
+                className="text-gray-400 hover:text-gray-600 bg-gray-50 p-2 rounded-full transition"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
 
-              {!selectedBeneficiary ? (
-                /* --- LIST VIEW --- */
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {pendingApprovals.length === 0 ? (
-                    <div className="col-span-2 text-center text-gray-500 py-10">
-                      No pending approvals found.
-                    </div>
-                  ) : (
-                    pendingApprovals.map((beneficiary) => (
-                      <div
-                        key={beneficiary.id}
-                        className="border border-gray-200 rounded-2xl p-5 hover:bg-blue-50 hover:border-blue-200 cursor-pointer transition-all duration-200 group"
-                        onClick={() => setSelectedBeneficiary(beneficiary)}
-                      >
-                        <div className="flex justify-between items-start">
-                          <div className="flex gap-4">
-                            {/* Avatar / Placeholder */}
-                            <div className="w-12 h-12 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-xl">
-                              {beneficiary.name?.charAt(0)}
-                            </div>
-                            <div>
-                              <h3 className="font-bold text-lg text-gray-800 group-hover:text-blue-700">
-                                {beneficiary.name}
-                              </h3>
-                              <p className="text-sm text-gray-500 font-medium">
-                                {beneficiary.membertype} • {beneficiary.gender}
-                              </p>
-                              <p className="text-xs text-gray-400 mt-1 flex items-center gap-1">
-                                <Calendar className="w-3 h-3" /> Due:{" "}
-                                {beneficiary.nextDueDate || "N/A"}
-                              </p>
-                            </div>
+            {!selectedBeneficiary ? (
+              /* --- LIST VIEW --- */
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {pendingApprovals.length === 0 ? (
+                  <div className="col-span-2 text-center text-gray-500 py-10">
+                    No pending approvals found.
+                  </div>
+                ) : (
+                  pendingApprovals.map((beneficiary) => (
+                    <div
+                      key={beneficiary.id}
+                      className="border border-gray-200 rounded-2xl p-5 hover:bg-blue-50 hover:border-blue-200 cursor-pointer transition-all duration-200 group"
+                      onClick={() => setSelectedBeneficiary(beneficiary)}
+                    >
+                      <div className="flex justify-between items-start">
+                        <div className="flex gap-4">
+                          {/* Avatar / Placeholder */}
+                          <div className="w-12 h-12 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-xl">
+                            {beneficiary.name?.charAt(0)}
                           </div>
-                          <span className="bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-xs font-bold shadow-sm">
-                            Pending
-                          </span>
+                          <div>
+                            <h3 className="font-bold text-lg text-gray-800 group-hover:text-blue-700">
+                              {beneficiary.name}
+                            </h3>
+                            <p className="text-sm text-gray-500 font-medium">
+                              {beneficiary.membertype} • {beneficiary.gender}
+                            </p>
+                            <p className="text-xs text-gray-400 mt-1 flex items-center gap-1">
+                              <Calendar className="w-3 h-3" /> Due:{" "}
+                              {beneficiary.nextDueDate || "N/A"}
+                            </p>
+                          </div>
                         </div>
+                        <span className="bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-xs font-bold shadow-sm">
+                          Pending
+                        </span>
                       </div>
-                    ))
-                  )}
-                </div>
-              ) : (
-                /* --- DETAIL VIEW --- */
-                <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
-                  <button
-                    onClick={() => setSelectedBeneficiary(null)}
-                    className="text-blue-600 hover:text-blue-800 flex items-center gap-2 font-medium mb-2"
-                  >
-                    ← Back to List
-                  </button>
+                    </div>
+                  ))
+                )}
+              </div>
+            ) : (
+              /* --- DETAIL VIEW --- */
+              <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
+                <button
+                  onClick={() => setSelectedBeneficiary(null)}
+                  className="text-blue-600 hover:text-blue-800 flex items-center gap-2 font-medium mb-2"
+                >
+                  ← Back to List
+                </button>
 
-                  <div className="bg-gray-50 rounded-2xl p-6 border border-gray-100">
-                    {/* Top Section: Photo & Header */}
-                    <div className="flex flex-col md:flex-row gap-6 mb-8 border-b border-gray-200 pb-6">
-                      {/* Photo Display */}
-                      <div className="w-32 h-32 bg-gray-200 rounded-xl flex-shrink-0 overflow-hidden shadow-md border-2 border-white">
-                        {selectedBeneficiary.photo ? (
-                          <img
-                            src={selectedBeneficiary.photo}
-                            alt="Beneficiary"
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center flex-col text-gray-400">
-                            <User className="w-10 h-10 mb-2" />
-                            <span className="text-xs">No Photo</span>
-                          </div>
+                <div className="bg-gray-50 rounded-2xl p-6 border border-gray-100">
+                  {/* Top Section: Photo & Header */}
+                  <div className="flex flex-col md:flex-row gap-6 mb-8 border-b border-gray-200 pb-6">
+                    {/* Photo Display */}
+                    <div className="w-32 h-32 bg-gray-200 rounded-xl flex-shrink-0 overflow-hidden shadow-md border-2 border-white">
+                      {selectedBeneficiary.photo ? (
+                        <img
+                          src={selectedBeneficiary.photo}
+                          alt="Beneficiary"
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center flex-col text-gray-400">
+                          <User className="w-10 h-10 mb-2" />
+                          <span className="text-xs">No Photo</span>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex-1">
+                      <h3 className="text-3xl font-bold text-gray-900 mb-2">
+                        {selectedBeneficiary.name}
+                      </h3>
+                      <div className="flex flex-wrap gap-2 mb-4">
+                        <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-lg text-sm font-semibold">
+                          {selectedBeneficiary.membertype}
+                        </span>
+                        <span className="bg-purple-100 text-purple-800 px-3 py-1 rounded-lg text-sm font-semibold">
+                          {selectedBeneficiary.gender}
+                        </span>
+                        {selectedBeneficiary.status && (
+                          <span className="bg-gray-200 text-gray-700 px-3 py-1 rounded-lg text-sm font-semibold">
+                            {selectedBeneficiary.status}
+                          </span>
                         )}
                       </div>
-
-                      <div className="flex-1">
-                        <h3 className="text-3xl font-bold text-gray-900 mb-2">
-                          {selectedBeneficiary.name}
-                        </h3>
-                        <div className="flex flex-wrap gap-2 mb-4">
-                          <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-lg text-sm font-semibold">
-                            {selectedBeneficiary.membertype}
-                          </span>
-                          <span className="bg-purple-100 text-purple-800 px-3 py-1 rounded-lg text-sm font-semibold">
-                            {selectedBeneficiary.gender}
-                          </span>
-                          {selectedBeneficiary.status && (
-                            <span className="bg-gray-200 text-gray-700 px-3 py-1 rounded-lg text-sm font-semibold">
-                              {selectedBeneficiary.status}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Grid Details */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
-                      {/* Section 1: Identity */}
-                      <div className="space-y-4">
-                        <h4 className="font-bold text-gray-500 uppercase text-xs tracking-wider border-b pb-2">
-                          Identity Details
-                        </h4>
-
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <label className="text-xs text-gray-500">
-                              Date of Birth
-                            </label>
-                            <p className="font-medium text-gray-900">
-                              {selectedBeneficiary.dob}
-                              <span className="text-gray-400 text-sm ml-1">
-                                ({calculateAge(selectedBeneficiary.dob)} Yrs)
-                              </span>
-                            </p>
-                          </div>
-                          <div>
-                            <label className="text-xs text-gray-500">
-                              Guardian Name
-                            </label>
-                            <p className="font-medium text-gray-900">
-                              {selectedBeneficiary.guardian_name || "N/A"}
-                            </p>
-                          </div>
-                        </div>
-
-                        <div>
-                          <label className="text-xs text-gray-500">
-                            ID Proof Type
-                          </label>
-                          <p className="font-medium text-gray-900">
-                            {selectedBeneficiary.idproof}
-                          </p>
-                        </div>
-                        <div>
-                          <label className="text-xs text-gray-500">
-                            ID Number
-                          </label>
-                          <p className="font-mono bg-white border px-2 py-1 rounded inline-block text-gray-800">
-                            {selectedBeneficiary.idnumber}
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* Section 2: Contact & Location */}
-                      <div className="space-y-4">
-                        <h4 className="font-bold text-gray-500 uppercase text-xs tracking-wider border-b pb-2">
-                          Contact & Location
-                        </h4>
-
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <label className="text-xs text-gray-500">
-                              Phone Number
-                            </label>
-                            <p className="font-medium text-gray-900">
-                              {selectedBeneficiary.phoneNo}
-                            </p>
-                          </div>
-                          <div>
-                            <label className="text-xs text-gray-500">
-                              Email
-                            </label>
-                            <p className="font-medium text-gray-900 truncate">
-                              {selectedBeneficiary.email || "N/A"}
-                            </p>
-                          </div>
-                        </div>
-
-                        <div>
-                          <label className="text-xs text-gray-500">
-                            Address
-                          </label>
-                          <p className="font-medium text-gray-900">
-                            {selectedBeneficiary.address}
-                          </p>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <label className="text-xs text-gray-500">
-                              City
-                            </label>
-                            <p className="font-medium text-gray-900">
-                              {selectedBeneficiary.city}
-                            </p>
-                          </div>
-                          <div>
-                            <label className="text-xs text-gray-500">
-                              Pincode
-                            </label>
-                            <p className="font-medium text-gray-900">
-                              {selectedBeneficiary.pincode}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
                     </div>
                   </div>
 
-                  {/* Actions */}
-                  <div className="flex gap-4 pt-2">
-                    <button
-                      onClick={() =>
-                        handleApproval(selectedBeneficiary.id, "approve")
-                      }
-                      className="flex-1 bg-gradient-to-r from-green-600 to-emerald-600 text-white py-3 px-6 rounded-xl font-bold text-lg hover:shadow-lg hover:shadow-green-200 transition-all duration-300 flex items-center justify-center gap-2"
-                    >
-                      <Check className="w-6 h-6" />
-                      Verify & Approve
-                    </button>
-                    <button
-                      onClick={() =>
-                        handleApproval(selectedBeneficiary.id, "reject")
-                      }
-                      className="flex-1 bg-white border-2 border-red-100 text-red-600 py-3 px-6 rounded-xl font-bold text-lg hover:bg-red-50 hover:border-red-200 transition-all duration-300 flex items-center justify-center gap-2"
-                    >
-                      <X className="w-6 h-6" />
-                      Reject
-                    </button>
+                  {/* Grid Details */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+                    {/* Section 1: Identity */}
+                    <div className="space-y-4">
+                      <h4 className="font-bold text-gray-500 uppercase text-xs tracking-wider border-b pb-2">
+                        Identity Details
+                      </h4>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="text-xs text-gray-500">
+                            Date of Birth
+                          </label>
+                          <p className="font-medium text-gray-900">
+                            {selectedBeneficiary.dob}
+                            <span className="text-gray-400 text-sm ml-1">
+                              ({calculateAge(selectedBeneficiary.dob)} Yrs)
+                            </span>
+                          </p>
+                        </div>
+                        <div>
+                          <label className="text-xs text-gray-500">
+                            Guardian Name
+                          </label>
+                          <p className="font-medium text-gray-900">
+                            {selectedBeneficiary.guardian_name || "N/A"}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="text-xs text-gray-500">
+                          ID Proof Type
+                        </label>
+                        <p className="font-medium text-gray-900">
+                          {selectedBeneficiary.idproof}
+                        </p>
+                      </div>
+                      <div>
+                        <label className="text-xs text-gray-500">
+                          ID Number
+                        </label>
+                        <p className="font-mono bg-white border px-2 py-1 rounded inline-block text-gray-800">
+                          {selectedBeneficiary.idnumber}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Section 2: Contact & Location */}
+                    <div className="space-y-4">
+                      <h4 className="font-bold text-gray-500 uppercase text-xs tracking-wider border-b pb-2">
+                        Contact & Location
+                      </h4>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="text-xs text-gray-500">
+                            Phone Number
+                          </label>
+                          <p className="font-medium text-gray-900">
+                            {selectedBeneficiary.phoneNo}
+                          </p>
+                        </div>
+                        <div>
+                          <label className="text-xs text-gray-500">Email</label>
+                          <p className="font-medium text-gray-900 truncate">
+                            {selectedBeneficiary.email || "N/A"}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="text-xs text-gray-500">Address</label>
+                        <p className="font-medium text-gray-900">
+                          {selectedBeneficiary.address}
+                        </p>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="text-xs text-gray-500">City</label>
+                          <p className="font-medium text-gray-900">
+                            {selectedBeneficiary.city}
+                          </p>
+                        </div>
+                        <div>
+                          <label className="text-xs text-gray-500">
+                            Pincode
+                          </label>
+                          <p className="font-medium text-gray-900">
+                            {selectedBeneficiary.pincode}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
-              )}
-            </div>
-          </div>
-        )}
 
-        {/* 2. ATTENDANCE MODAL */}
-        {showAttendanceModal && selectedSchedule && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl animate-in fade-in zoom-in duration-200">
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold text-gray-800">
-                  Submit Attendance
-                </h2>
-                <button
-                  onClick={() => {
-                    setShowAttendanceModal(false);
-                    setSelectedSchedule(null);
-                    setUploadedPhoto(null);
-                  }}
-                  className="text-gray-500 hover:text-gray-700 transition-colors"
-                >
-                  <X className="w-6 h-6" />
-                </button>
+                {/* Actions */}
+                <div className="flex gap-4 pt-2">
+                  <button
+                    onClick={() =>
+                      handleApproval(selectedBeneficiary.id, "approve")
+                    }
+                    className="flex-1 bg-gradient-to-r from-green-600 to-emerald-600 text-white py-3 px-6 rounded-xl font-bold text-lg hover:shadow-lg hover:shadow-green-200 transition-all duration-300 flex items-center justify-center gap-2"
+                  >
+                    <Check className="w-6 h-6" />
+                    Verify & Approve
+                  </button>
+                  <button
+                    onClick={() =>
+                      handleApproval(selectedBeneficiary.id, "reject")
+                    }
+                    className="flex-1 bg-white border-2 border-red-100 text-red-600 py-3 px-6 rounded-xl font-bold text-lg hover:bg-red-50 hover:border-red-200 transition-all duration-300 flex items-center justify-center gap-2"
+                  >
+                    <X className="w-6 h-6" />
+                    Reject
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* 2. ATTENDANCE MODAL */}
+      {showAttendanceModal && selectedSchedule && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl animate-in fade-in zoom-in duration-200">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold text-gray-800">
+                Submit Attendance
+              </h2>
+              <button
+                onClick={() => {
+                  setShowAttendanceModal(false);
+                  setSelectedSchedule(null);
+                  setUploadedPhoto(null);
+                }}
+                className="text-gray-500 hover:text-gray-700 transition-colors"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            <div className="space-y-6">
+              <div className="bg-blue-50 rounded-xl p-4">
+                <h3 className="font-semibold text-blue-800">
+                  Center: {selectedSchedule.center?.code || "Unknown Center"}
+                </h3>
+                <p className="text-blue-600">{selectedSchedule.date}</p>
+                <p className="text-sm text-gray-600">
+                  {selectedSchedule.assigned} patients
+                </p>
               </div>
 
-              <div className="space-y-6">
-                <div className="bg-blue-50 rounded-xl p-4">
-                  <h3 className="font-semibold text-blue-800">
-                    Center: {selectedSchedule.center?.code || "Unknown Center"}
-                  </h3>
-                  <p className="text-blue-600">{selectedSchedule.date}</p>
-                  <p className="text-sm text-gray-600">
-                    {selectedSchedule.assigned} patients
-                  </p>
-                </div>
+              <div className="flex items-center gap-3 text-green-600">
+                <MapPin className="w-5 h-5" />
+                <span className="text-sm">
+                  Location:{" "}
+                  {typeof location !== "undefined"
+                    ? location
+                    : selectedSchedule.center?.code}
+                </span>
+              </div>
 
-                <div className="flex items-center gap-3 text-green-600">
-                  <MapPin className="w-5 h-5" />
-                  <span className="text-sm">
-                    Location:{" "}
-                    {typeof location !== "undefined"
-                      ? location
-                      : selectedSchedule.center?.code}
-                  </span>
-                </div>
+              <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center relative hover:bg-gray-50 transition-colors">
+                {uploadedPhoto ? (
+                  <div className="space-y-2">
+                    <div className="text-green-600">
+                      <Check className="w-8 h-8 mx-auto" />
+                    </div>
+                    <p className="text-sm text-gray-600">
+                      Photo uploaded:{" "}
+                      <span className="font-medium">{uploadedPhoto.name}</span>
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-2 pointer-events-none">
+                    <Camera className="w-8 h-8 mx-auto text-gray-400" />
+                    <p className="text-gray-600">Take/Upload Photo</p>
+                  </div>
+                )}
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handlePhotoUpload}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                />
+              </div>
 
-                <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center relative hover:bg-gray-50 transition-colors">
-                  {uploadedPhoto ? (
-                    <div className="space-y-2">
-                      <div className="text-green-600">
-                        <Check className="w-8 h-8 mx-auto" />
-                      </div>
-                      <p className="text-sm text-gray-600">
-                        Photo uploaded:{" "}
-                        <span className="font-medium">
-                          {uploadedPhoto.name}
-                        </span>
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="space-y-2 pointer-events-none">
-                      <Camera className="w-8 h-8 mx-auto text-gray-400" />
-                      <p className="text-gray-600">Take/Upload Photo</p>
-                    </div>
-                  )}
+              <button
+                onClick={submitAttendance}
+                disabled={!uploadedPhoto}
+                className="w-full bg-gradient-to-r from-emerald-800 to-teal-800 text-white py-3 px-6 rounded-xl font-semibold hover:shadow-lg transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
+              >
+                Submit Attendance
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 3. STOCK MODAL */}
+      {showStockModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-3xl p-8 max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-3xl font-bold text-gray-800">
+                Manage Vaccine Stock
+              </h2>
+              <button
+                onClick={() => setShowStockModal(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            {/* Add New Stock Form */}
+            <div className="border-2 border-dashed border-purple-300 rounded-xl p-6 mb-8 bg-purple-50">
+              <h3 className="text-xl font-bold mb-4 text-purple-800 flex items-center gap-2">
+                <Plus className="w-5 h-5" /> Add New Vaccine Stock
+              </h3>
+              <form
+                onSubmit={submitNewStock}
+                className="grid grid-cols-1 md:grid-cols-5 gap-4"
+              >
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Name
+                  </label>
                   <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handlePhotoUpload}
-                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                    type="text"
+                    value={newStock.name}
+                    onChange={(e) =>
+                      setNewStock((prev) => ({
+                        ...prev,
+                        name: e.target.value,
+                      }))
+                    }
+                    placeholder="e.g., COVAX-19"
+                    required
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                   />
                 </div>
-
-                <button
-                  onClick={submitAttendance}
-                  disabled={!uploadedPhoto}
-                  className="w-full bg-gradient-to-r from-emerald-800 to-teal-800 text-white py-3 px-6 rounded-xl font-semibold hover:shadow-lg transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
-                >
-                  Submit Attendance
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* 3. STOCK MODAL */}
-        {showStockModal && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-3xl p-8 max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-3xl font-bold text-gray-800">
-                  Manage Vaccine Stock
-                </h2>
-                <button
-                  onClick={() => setShowStockModal(false)}
-                  className="text-gray-500 hover:text-gray-700"
-                >
-                  <X className="w-6 h-6" />
-                </button>
-              </div>
-
-              {/* Add New Stock Form */}
-              <div className="border-2 border-dashed border-purple-300 rounded-xl p-6 mb-8 bg-purple-50">
-                <h3 className="text-xl font-bold mb-4 text-purple-800 flex items-center gap-2">
-                  <Plus className="w-5 h-5" /> Add New Vaccine Stock
-                </h3>
-                <form
-                  onSubmit={submitNewStock}
-                  className="grid grid-cols-1 md:grid-cols-5 gap-4"
-                >
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Name
-                    </label>
-                    <input
-                      type="text"
-                      value={newStock.name}
-                      onChange={(e) =>
-                        setNewStock((prev) => ({
-                          ...prev,
-                          name: e.target.value,
-                        }))
-                      }
-                      placeholder="e.g., COVAX-19"
-                      required
-                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Current
-                    </label>
-                    <input
-                      type="number"
-                      value={newStock.currentStock}
-                      onChange={(e) =>
-                        setNewStock((prev) => ({
-                          ...prev,
-                          currentStock: parseInt(e.target.value) || 0,
-                        }))
-                      }
-                      min="0"
-                      required
-                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    />
-                  </div>
-                  <div className="hidden">
-                    <input type="hidden" value={newStock.usedStock} />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Received
-                    </label>
-                    <input
-                      type="number"
-                      value={newStock.receivedStock}
-                      onChange={(e) =>
-                        setNewStock((prev) => ({
-                          ...prev,
-                          receivedStock: parseInt(e.target.value) || 0,
-                        }))
-                      }
-                      min="0"
-                      required
-                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Expiry Date
-                    </label>
-                    <input
-                      type="date"
-                      value={newStock.expiryDate}
-                      onChange={(e) =>
-                        setNewStock((prev) => ({
-                          ...prev,
-                          expiryDate: e.target.value,
-                        }))
-                      }
-                      required
-                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    />
-                  </div>
-                  <div className="md:col-span-5 flex justify-end">
-                    <button
-                      type="submit"
-                      className="bg-purple-600 text-white py-3 px-6 rounded-xl font-semibold hover:bg-purple-700 transition-colors"
-                    >
-                      Add Stock Item
-                    </button>
-                  </div>
-                </form>
-              </div>
-
-              {/* Update Existing Stock */}
-              <h3 className="text-xl font-bold mb-4 text-gray-800">
-                Update Existing Stock Items ({stockData.length})
-              </h3>
-
-              <div className="space-y-6">
-                {stockData.map((vaccine) => (
-                  <div
-                    key={vaccine.id}
-                    className="border rounded-xl p-6 bg-gray-50"
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Current
+                  </label>
+                  <input
+                    type="number"
+                    value={newStock.currentStock}
+                    onChange={(e) =>
+                      setNewStock((prev) => ({
+                        ...prev,
+                        currentStock: parseInt(e.target.value) || 0,
+                      }))
+                    }
+                    min="0"
+                    required
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  />
+                </div>
+                <div className="hidden">
+                  <input type="hidden" value={newStock.usedStock} />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Received
+                  </label>
+                  <input
+                    type="number"
+                    value={newStock.receivedStock}
+                    onChange={(e) =>
+                      setNewStock((prev) => ({
+                        ...prev,
+                        receivedStock: parseInt(e.target.value) || 0,
+                      }))
+                    }
+                    min="0"
+                    required
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Expiry Date
+                  </label>
+                  <input
+                    type="date"
+                    value={newStock.expiryDate}
+                    onChange={(e) =>
+                      setNewStock((prev) => ({
+                        ...prev,
+                        expiryDate: e.target.value,
+                      }))
+                    }
+                    required
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  />
+                </div>
+                <div className="md:col-span-5 flex justify-end">
+                  <button
+                    type="submit"
+                    className="bg-purple-600 text-white py-3 px-6 rounded-xl font-semibold hover:bg-purple-700 transition-colors"
                   >
-                    <h3 className="text-lg font-bold mb-4 text-purple-600">
-                      {vaccine.name}
-                    </h3>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Current Stock
-                        </label>
-                        <input
-                          type="number"
-                          value={vaccine.currentStock}
-                          onChange={(e) =>
-                            updateLocalStock(
-                              vaccine.id,
-                              "currentStock",
-                              e.target.value
-                            )
-                          }
-                          min="0"
-                          className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Used Today
-                        </label>
-                        <input
-                          type="number"
-                          value={vaccine.usedStock}
-                          onChange={(e) =>
-                            updateLocalStock(
-                              vaccine.id,
-                              "usedStock",
-                              e.target.value
-                            )
-                          }
-                          min="0"
-                          className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Received Today
-                        </label>
-                        <input
-                          type="number"
-                          value={vaccine.receivedStock}
-                          onChange={(e) =>
-                            updateLocalStock(
-                              vaccine.id,
-                              "receivedStock",
-                              e.target.value
-                            )
-                          }
-                          min="0"
-                          className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Expiry Date
-                        </label>
-                        <input
-                          type="date"
-                          value={vaccine.expiryDate}
-                          onChange={(e) =>
-                            updateLocalStock(
-                              vaccine.id,
-                              "expiryDate",
-                              e.target.value
-                            )
-                          }
-                          className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                        />
-                      </div>
+                    Add Stock Item
+                  </button>
+                </div>
+              </form>
+            </div>
+
+            {/* Update Existing Stock */}
+            <h3 className="text-xl font-bold mb-4 text-gray-800">
+              Update Existing Stock Items ({stockData.length})
+            </h3>
+
+            <div className="space-y-6">
+              {stockData.map((vaccine) => (
+                <div
+                  key={vaccine.id}
+                  className="border rounded-xl p-6 bg-gray-50"
+                >
+                  <h3 className="text-lg font-bold mb-4 text-purple-600">
+                    {vaccine.name}
+                  </h3>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Current Stock
+                      </label>
+                      <input
+                        type="number"
+                        value={vaccine.currentStock}
+                        onChange={(e) =>
+                          updateLocalStock(
+                            vaccine.id,
+                            "currentStock",
+                            e.target.value
+                          )
+                        }
+                        min="0"
+                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Used Today
+                      </label>
+                      <input
+                        type="number"
+                        value={vaccine.usedStock}
+                        onChange={(e) =>
+                          updateLocalStock(
+                            vaccine.id,
+                            "usedStock",
+                            e.target.value
+                          )
+                        }
+                        min="0"
+                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Received Today
+                      </label>
+                      <input
+                        type="number"
+                        value={vaccine.receivedStock}
+                        onChange={(e) =>
+                          updateLocalStock(
+                            vaccine.id,
+                            "receivedStock",
+                            e.target.value
+                          )
+                        }
+                        min="0"
+                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Expiry Date
+                      </label>
+                      <input
+                        type="date"
+                        value={vaccine.expiryDate}
+                        onChange={(e) =>
+                          updateLocalStock(
+                            vaccine.id,
+                            "expiryDate",
+                            e.target.value
+                          )
+                        }
+                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      />
                     </div>
                   </div>
-                ))}
-              </div>
+                </div>
+              ))}
+            </div>
 
-              <div className="flex gap-4 mt-8 pt-4 border-t border-gray-200">
-                <button
-                  onClick={submitStockUpdate}
-                  className="flex-1 bg-gradient-to-r from-purple-500 to-pink-500 text-white py-3 px-6 rounded-xl font-semibold hover:shadow-lg transition-all duration-300"
-                >
-                  Submit All Updates
-                </button>
-                <button
-                  onClick={() => setShowStockModal(false)}
-                  className="flex-1 bg-gradient-to-r from-gray-500 to-gray-600 text-white py-3 px-6 rounded-xl font-semibold hover:shadow-lg transition-all duration-300"
-                >
-                  Cancel
-                </button>
-              </div>
+            <div className="flex gap-4 mt-8 pt-4 border-t border-gray-200">
+              <button
+                onClick={submitStockUpdate}
+                className="flex-1 bg-gradient-to-r from-purple-500 to-pink-500 text-white py-3 px-6 rounded-xl font-semibold hover:shadow-lg transition-all duration-300"
+              >
+                Submit All Updates
+              </button>
+              <button
+                onClick={() => setShowStockModal(false)}
+                className="flex-1 bg-gradient-to-r from-gray-500 to-gray-600 text-white py-3 px-6 rounded-xl font-semibold hover:shadow-lg transition-all duration-300"
+              >
+                Cancel
+              </button>
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
+    </div>
   );
 };
 
