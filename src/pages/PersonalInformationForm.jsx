@@ -199,9 +199,6 @@ useEffect(() => {
     <option value="">Select Gender</option>
     <option value="Male">Male</option>
     <option value="Female">Female</option>
-    <option value="Pregnant">Pregnant</option>
-    <option value="0-3 years child">0-3 years child</option>
-    <option value="3-6 years child">3-6 years child</option>
   </select>
 
             {/* Photo Upload */}
