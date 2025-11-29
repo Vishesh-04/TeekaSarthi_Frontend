@@ -10,12 +10,13 @@ import Footer from "./components/Footer";
 import Navbar from './components/Navbar';
 
 import WorkerLogin from './pages/workers/WorkerLogin';
-import WorkerDashboard from './pages/workers/Workerdashboard'; 
+import WorkerDashboard from './pages/workers/Workerdashboard';
 import PendingBeneficiaries from './pages/workers/PendingBeneficiaries';
 // import VaccinationEntry from './pages/workers/VaccinationEntry';
 import LocateAnganwadiCenter from './pages/LocateAnganwadiCenter';
 import AddBeneficiarySelection from './pages/AddBeneficiarySelection';
 import PersonalInformationForm from './pages/PersonalInformationForm';
+import WorkerProtectedRoute from './components/WorkerProtectedRoute';
 
 import Nav from './components/Nav';
 
@@ -65,19 +66,19 @@ function App() {
       <Route
         path="/worker/dashboard"
         element={
-          <>
+          <WorkerProtectedRoute>
             <WorkerDashboard />
             <Footer />
-          </>
+          </WorkerProtectedRoute>
         }
       />
       <Route
         path="/worker/pending-beneficiaries"
         element={
-          <>
+          <WorkerProtectedRoute>
             <PendingBeneficiaries />
             <Footer />
-          </>
+          </WorkerProtectedRoute>
         }
       />
 
