@@ -1,23 +1,9 @@
 import React, { useState, useEffect } from "react";
-
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
-import BeneficiaryCard from '../components/BeneficiaryCard'
-
-
+import BeneficiaryCard from "../components/BeneficiaryCard";
 
 function PersonalInformationForm() {
-  
-useEffect(() => {
-  const storedBeneficiaryType = localStorage.getItem("selectedBeneficiaryType");
-  if (storedBeneficiaryType) {
-    setFormData((prev) => ({
-      ...prev,
-      membertype: storedBeneficiaryType
-    }));
-    // localStorage.removeItem("selectedBeneficiaryType"); // Optional cleanup
-  }
-}, []);
   const navigate = useNavigate();
 
   const [formData, setFormData] = useState({
@@ -32,24 +18,28 @@ useEffect(() => {
     address: "",
     city: "",
     pincode: "",
-    centerName: "",
+    centerName: "", // ✅ CHANGED: Renamed from centerId to centerName to match Backend expectation
     photo: null,
     email: "",
   });
 
   const [beneficiaries, setBeneficiaries] = useState([]);
   const [photoPreview, setPhotoPreview] = useState(null);
-   useEffect(() => {
+
+  useEffect(() => {
+    // 1. Retrieve Stored Data
     const savedType = localStorage.getItem("selectedBeneficiaryType");
     const storedCenter = JSON.parse(localStorage.getItem("selectedCenter"));
 
+    // 2. Set State
+    // Note: We map storedCenter.id to 'centerName' because the backend
+    // asks for parameter 'centerName' but expects type 'Long' (ID).
     setFormData((prev) => ({
       ...prev,
       membertype: savedType || "",
-      centerName: storedCenter?.name || "",
+      centerName: storedCenter?.id || "",
     }));
   }, []);
-
 
   const handleChange = (e) => {
     const { name, value, files } = e.target;
@@ -65,18 +55,25 @@ useEffect(() => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    // ✅ Retrieve Token for Auth
+    const token = localStorage.getItem("token"); // OR "jwt", check what you named it in Login
+
     const form = new FormData();
     Object.entries(formData).forEach(([key, value]) => {
-      if (value) form.append(key, value);
+      // Only append if value exists to keep request clean
+      if (value !== null && value !== undefined && value !== "") {
+        form.append(key, value);
+      }
     });
 
     try {
       const response = await axios.post(
-        "http://localhost:8080/api/beneficiaries/add",
+        "api/beneficiaries/add", // Ensure your baseURL is set in axios config, or use full URL
         form,
         {
           headers: {
             "Content-Type": "multipart/form-data",
+            Authorization: `Bearer ${token}`, // ✅ FIXED: Added Auth Header to solve 403 Error
           },
         }
       );
@@ -85,9 +82,9 @@ useEffect(() => {
       alert(`Beneficiary registered successfully! ID: ${savedBeneficiary.id}`);
       setBeneficiaries((prev) => [...prev, savedBeneficiary]);
 
-      // Clear form
+      // Clear form (Resetting state)
       setFormData({
-        membertype: "",
+        membertype: formData.membertype, // Keep these consistent
         name: "",
         guardianName: "",
         dob: "",
@@ -98,19 +95,21 @@ useEffect(() => {
         address: "",
         city: "",
         pincode: "",
-        centerName: "",
+        centerName: formData.centerName, // Keep the center ID
         photo: null,
         email: "",
       });
       setPhotoPreview(null);
     } catch (error) {
       console.error("Error registering beneficiary:", error);
-      alert(error.response?.data?.message || "Registration failed!");
+      // Better error handling
+      const errorMsg = error.response?.data?.message || "Registration failed!";
+      alert(`Error: ${error.response?.status} - ${errorMsg}`);
     }
   };
 
   return (
-    <div className="min-h-screen  flex items-center justify-center bg-gradient-to-br from-blue-100 via-indigo-100 to-purple-100 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-100 via-indigo-100 to-purple-100 p-4">
       <div className="w-full max-w-7/10 bg-white/30 backdrop-blur-md rounded-3xl shadow-2xl p-8 md:p-10 border border-white/50">
         {/* Back Button */}
         <button onClick={() => navigate(-1)} className="mb-6">
@@ -124,82 +123,83 @@ useEffect(() => {
         <h1 className="text-3xl md:text-4xl font-extrabold text-center text-indigo-700 mb-8">
           Register a Beneficiary
         </h1>
-  <form onSubmit={handleSubmit} className="space-y-4">
+
+        <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {[
               { name: "membertype", placeholder: "Beneficiary Type" },
               { name: "name", placeholder: "Full Name" },
               { name: "guardianName", placeholder: "Guardian's Name" },
               { name: "dob", placeholder: "Date of Birth", type: "date" },
-              { name: "idproof", placeholder: "ID Proof Type (Aadhar, etc.)" },
+              { name: "idproof", placeholder: "ID Proof Type" },
               { name: "idnumber", placeholder: "ID Proof Number" },
               { name: "phoneNo", placeholder: "Phone Number" },
               { name: "address", placeholder: "Address" },
               { name: "city", placeholder: "City" },
               { name: "pincode", placeholder: "Pincode" },
-              { name: "centerName", placeholder: "Center Name" },
+              { name: "centerName", placeholder: "Center ID" }, // ✅ CHANGED: Name matches state key
               { name: "email", placeholder: "Email" },
             ].map((field) => {
-  // ✅ Read-only fields
-  if (field.name === "membertype" || field.name === "centerName") {
-    return (
-      <input
-        key={field.name}
-        type="text"
-        name={field.name}
-        placeholder={field.placeholder}
-        value={formData[field.name]}
-        readOnly
-        className="w-full px-4 py-3 rounded-xl border border-gray-300 bg-gray-100 text-gray-700 cursor-not-allowed"
-      />
-    );
-  }
+              // ✅ Read-only fields
+              if (field.name === "membertype" || field.name === "centerName") {
+                return (
+                  <input
+                    key={field.name}
+                    type="text"
+                    name={field.name}
+                    placeholder={field.placeholder}
+                    value={formData[field.name]}
+                    readOnly
+                    className="w-full px-4 py-3 rounded-xl border border-gray-300 bg-gray-100 text-gray-700 cursor-not-allowed"
+                  />
+                );
+              }
 
-  // ✅ Dropdown for ID Proof
-  if (field.name === "idproof") {
-    return (
-      <select
-        key={field.name}
-        name={field.name}
-        value={formData[field.name]}
-        onChange={handleChange}
-        required
-        className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-4 focus:ring-indigo-300 bg-white/70 shadow-sm"
-      >
-        <option value="">Select ID Proof</option>
-        <option value="Aadhar Card">Aadhar Card</option>
-        <option value="PAN Card">PAN Card</option>
-      </select>
-    );
-  }
+              // ✅ Dropdown for ID Proof
+              if (field.name === "idproof") {
+                return (
+                  <select
+                    key={field.name}
+                    name={field.name}
+                    value={formData[field.name]}
+                    onChange={handleChange}
+                    required
+                    className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-4 focus:ring-indigo-300 bg-white/70 shadow-sm"
+                  >
+                    <option value="">Select ID Proof</option>
+                    <option value="Aadhar Card">Aadhar Card</option>
+                    <option value="PAN Card">PAN Card</option>
+                  </select>
+                );
+              }
 
-  // ✅ Normal input for all other fields
-  return (
-    <input
-      key={field.name}
-      type={field.type || "text"}
-      name={field.name}
-      placeholder={field.placeholder}
-      value={formData[field.name]}
-      onChange={handleChange}
-      required
-      className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-4 focus:ring-indigo-300 bg-white/70 shadow-sm placeholder-gray-500"
-    />
-  );
-})}
+              // ✅ Normal input for all other fields
+              return (
+                <input
+                  key={field.name}
+                  type={field.type || "text"}
+                  name={field.name}
+                  placeholder={field.placeholder}
+                  value={formData[field.name]}
+                  onChange={handleChange}
+                  required
+                  className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-4 focus:ring-indigo-300 bg-white/70 shadow-sm placeholder-gray-500"
+                />
+              );
+            })}
 
-  {/* Gender Dropdown */}
-  <select
-    name="gender"
-    value={formData.gender}
-    onChange={handleChange}
-    required
-    className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-4 focus:ring-indigo-300 bg-white/70 shadow-sm"
-  >
-    <option value="">Select Gender</option>
-    <option value="Male">Male</option>
-    <option value="Female">Female</option>
-  </select>
+            {/* Gender Dropdown */}
+            <select
+              name="gender"
+              value={formData.gender}
+              onChange={handleChange}
+              required
+              className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-4 focus:ring-indigo-300 bg-white/70 shadow-sm"
+            >
+              <option value="">Select Gender</option>
+              <option value="Male">Male</option>
+              <option value="Female">Female</option>
+            </select>
 
             {/* Photo Upload */}
             <div className="md:col-span-2">
