@@ -214,10 +214,16 @@ const WorkerDashboard = () => {
   // --- Handlers ---
 
   const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("role");
-    navigate("/workerlogin");
+    // Remove worker authentication data
+    localStorage.removeItem("workerToken");
+    localStorage.removeItem("workerRole"); // if you store role separately
+    localStorage.removeItem("workerId"); // optional (if stored)
+
+    localStorage.clear();
+    navigate("/workerlogin", { replace: true });
+
   };
+
 
   const handleVerifyBeneficiary = async (beneficiaryId) => {
     try {
