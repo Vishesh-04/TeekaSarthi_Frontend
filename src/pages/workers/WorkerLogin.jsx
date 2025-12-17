@@ -26,9 +26,14 @@ function WorkerLogin() {
       // Assuming response.data contains the token or success message
       if (response.data && response.data.token) {
         localStorage.setItem("workerToken", response.data.token);
+        localStorage.setItem("employeeCode", employeeCode);
+        localStorage.setItem("employeeName", name);
+
       } else {
         // Fallback if just success
         localStorage.setItem("workerToken", "authenticated");
+        localStorage.setItem("employeeCode", employeeCode);
+        localStorage.setItem("employeeName", name);
       }
 
       alert("Logged in successfully");

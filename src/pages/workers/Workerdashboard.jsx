@@ -32,10 +32,17 @@ const formatDate = (dateString) => {
 
 const WorkerDashboard = () => {
   const navigate = useNavigate();
-
+  const worker_code = localStorage.getItem("employeeCode");
+  const worker_name = localStorage.getItem("employeeName");
+  const [center_id, setCenterId] = useState(null); // Will store the DB ID (e.g. 5)
+  const [worker_id, setWorkerId] = useState(null); // Will store the DB ID (e.g. 102)
+  const [center_name, setCenterName] = useState("");
+  const [beneficiaryData, setBeneficiaryData] = useState({});
   // --- State Management ---
   const [pendingApprovals, setPendingApprovals] = useState([]);
   const [selectedBeneficiary, setSelectedBeneficiary] = useState(null);
+  const [rawFile, setRawFile] = useState(null);
+  const [coords, setCoords] = useState({ lat: "", lon: "" });
 
   // Modals
   const [showApprovalModal, setShowApprovalModal] = useState(false);
@@ -75,9 +82,6 @@ const WorkerDashboard = () => {
     const ageDate = new Date(diff);
     return Math.abs(ageDate.getUTCFullYear() - 1970);
   };
-  const worker_id = 1;
-  const worker_name = "John Doe";
-  const center_id = 1;
 
   const showNotification = (message, type = "success") => {
     setNotification({ show: true, message, type });
@@ -105,6 +109,41 @@ const WorkerDashboard = () => {
         return "bg-gray-100 text-gray-800 border-gray-200";
     }
   };
+  const fetchCenterDetails = async () => {
+    if (!worker_code) return;
+
+    try {
+      // 👇 CHANGED: Use axios to ensure the 'Authorization' header is sent
+      const response = await axios.get(`/api/center/worker/${worker_code}`);
+
+      // Update State (Backend returns { centerId, centerName, workerId })
+      setCenterId(response.data.centerId);
+      setCenterName(response.data.centerName);
+      setWorkerId(response.data.workerId);
+    } catch (err) {
+      console.error("Center Fetch Error:", err);
+      showNotification("Could not fetch assigned center details", "error");
+    }
+  };
+  const handleBulkDateChange = (beneficiaryId, date) => {
+    setBeneficiaryData((prev) => ({
+      ...prev,
+      [beneficiaryId]: { ...prev[beneficiaryId], nextDueDate: date },
+    }));
+  };
+
+  // Helper to update photo for a specific beneficiary
+  const handleBulkPhotoChange = (beneficiaryId, file) => {
+    setBeneficiaryData((prev) => ({
+      ...prev,
+      [beneficiaryId]: { ...prev[beneficiaryId], photo: file },
+    }));
+  };
+
+  // Helper to check if a specific beneficiary has data entered
+  const isBeneficiaryComplete = (id) => {
+    return beneficiaryData[id]?.photo && beneficiaryData[id]?.nextDueDate;
+  };
 
   const getStockStatus = (stock) => {
     if (
@@ -125,12 +164,12 @@ const WorkerDashboard = () => {
 
   const fetchSchedules = async () => {
     try {
-      // Note: Ideally, get the Worker ID dynamically from user context/token
       const response = await axios.get(
         `/api/supervisor/distribution/worker/${worker_id}`
       );
 
       if (response.data.success) {
+        console.log(response.data.data);
         setScheduleList(response.data.data);
       }
     } catch (error) {
@@ -172,23 +211,35 @@ const WorkerDashboard = () => {
       navigator.geolocation.getCurrentPosition(
         async (position) => {
           const { latitude, longitude } = position.coords;
+          setCoords({ lat: latitude.toString(), lon: longitude.toString() });
           try {
             const response = await fetch(
               `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`
             );
             const data = await response.json();
+
             if (data && data.address) {
-              const { city, state, country } = data.address;
-              setLocation(`${city || state}, ${country}`);
+              console.log(data.address); // Helpful for debugging
+
+              const { city, town, village, suburb, county, state } =
+                data.address;
+
+              // Priority: City -> Town -> Village -> Suburb -> County
+              const localName = city || town || village || suburb || county;
+
+              // Set location as "City, State"
+              setLocation(`${localName}, ${state}`);
             } else {
               setLocation("Location not found");
             }
           } catch (error) {
+            console.error(error);
             setLocation("Error fetching location");
           }
         },
-        () => {
-          setLocation("Location access denied");
+        (error) => {
+          console.error("Location error", error);
+          showNotification("Please enable location services", "error");
         }
       );
     } else {
@@ -199,9 +250,7 @@ const WorkerDashboard = () => {
   // --- Effects ---
 
   useEffect(() => {
-    fetchSchedules();
-    fetchPendingApprovals();
-    fetchStockData();
+    fetchCenterDetails();
     getCurrentLocation();
 
     const timer = setInterval(() => {
@@ -210,6 +259,22 @@ const WorkerDashboard = () => {
 
     return () => clearInterval(timer);
   }, []);
+
+  // 2. Run WHEN worker_id is ready -> Fetch Schedule
+  useEffect(() => {
+    if (worker_id) {
+      fetchSchedules();
+    }
+  }, [worker_id]);
+
+  // 3. Run WHEN center_id is ready -> Fetch Stock & Approvals
+  useEffect(() => {
+    if (center_id) {
+      console.log("Center ID found:", center_id, "Fetching data...");
+      fetchPendingApprovals();
+      fetchStockData();
+    }
+  }, [center_id]);
 
   // --- Handlers ---
 
@@ -221,9 +286,22 @@ const WorkerDashboard = () => {
 
     localStorage.clear();
     navigate("/workerlogin", { replace: true });
-
   };
 
+  const handlePhotoUpload = (event) => {
+    const file = event.target.files[0];
+    if (file) {
+      // 1. Save raw file for upload
+      setRawFile(file);
+
+      // 2. Create preview for UI
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setUploadedPhoto({ name: file.name, data: e.target.result });
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   const handleVerifyBeneficiary = async (beneficiaryId) => {
     try {
@@ -260,7 +338,6 @@ const WorkerDashboard = () => {
     }
   };
 
-
   const handleApproval = (beneficiaryId, action) => {
     if (action === "approve") {
       handleVerifyBeneficiary(beneficiaryId);
@@ -278,26 +355,69 @@ const WorkerDashboard = () => {
     }
   };
 
-  const handlePhotoUpload = (event) => {
-    const file = event.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        setUploadedPhoto({ name: file.name, data: e.target.result });
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const submitAttendance = () => {
-    if (!uploadedPhoto) {
-      showNotification("Please upload a photo first!", "error");
+  const submitAttendance = async () => {
+    // Validation: Ensure at least one beneficiary has data
+    if (Object.keys(beneficiaryData).length === 0) {
+      showNotification("Please update at least one beneficiary!", "error");
       return;
     }
-    showNotification("Attendance submitted successfully!");
-    setShowAttendanceModal(false);
-    setUploadedPhoto(null);
-    setSelectedSchedule(null);
+
+    const token = localStorage.getItem("workerToken");
+    const formData = new FormData();
+
+    // 1. Append Standard Data
+    formData.append("workerId", worker_id);
+    formData.append("centerId", center_id);
+    formData.append("latitude", coords.lat ? String(coords.lat) : "0");
+    formData.append("longitude", coords.lon ? String(coords.lon) : "0");
+    formData.append("location", location || "Unknown Location");
+    
+    // IMPORTANT: Send the Assignment ID (Parent Task ID)
+    if (selectedSchedule?.id) {
+      formData.append("taskId", selectedSchedule.id);
+    }
+
+    // 2. Append Dynamic Beneficiary Data
+    // Backend expects: photo_101, date_101, photo_102, date_102, etc.
+    Object.entries(beneficiaryData).forEach(([id, data]) => {
+      if (data.photo) {
+        formData.append(`photo_${id}`, data.photo);
+      }
+      if (data.nextDueDate) {
+        formData.append(`date_${id}`, data.nextDueDate);
+      }
+    });
+
+    try {
+      // 3. Send Request
+      await axios.post("/api/attendance/submit", formData, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "multipart/form-data", // Axios sets boundary automatically
+        },
+      });
+
+      showNotification("Attendance & Visit Details submitted successfully!");
+
+      // 4. Update UI: Remove the completed schedule from the list
+      if (selectedSchedule?.id) {
+        setScheduleList((prev) =>
+          prev.filter((item) => item.id !== selectedSchedule.id)
+        );
+      }
+
+      // 5. Cleanup
+      setShowAttendanceModal(false);
+      setBeneficiaryData({});
+      setSelectedSchedule(null);
+
+    } catch (error) {
+      console.error("Upload error", error);
+      showNotification(
+        "Failed: " + (error.response?.data || error.message),
+        "error"
+      );
+    }
   };
 
   // --- Stock Management Handlers ---
@@ -380,6 +500,7 @@ const WorkerDashboard = () => {
     }
   };
 
+  // REPLACE your generatePDFReport function with this:
   const generatePDFReport = () => {
     const doc = new jsPDF();
     const date = new Date().toISOString().split("T")[0];
@@ -389,14 +510,17 @@ const WorkerDashboard = () => {
 
     doc.setFontSize(12);
     doc.text(`Date: ${date}`, 10, 30);
-    doc.text(`Worker: John Doe`, 10, 40);
-    doc.text(`Worker ID: HW001`, 10, 50);
+
+    // 👇 UPDATED: Use dynamic variables
+    doc.text(`Worker: ${worker_name || "N/A"}`, 10, 40);
+    doc.text(`Worker Code: ${worker_code || "N/A"}`, 10, 50);
+    doc.text(`Center: ${center_name || "N/A"}`, 10, 60);
 
     doc.setFontSize(14);
-    doc.text("Stocks:", 10, 70);
+    doc.text("Stocks:", 10, 80); // Adjusted Y position slightly
     doc.setFontSize(12);
 
-    let y = 85;
+    let y = 90; // Adjusted start position
 
     if (stockData.length === 0) {
       doc.text("No stock data available", 10, y);
@@ -483,7 +607,13 @@ const WorkerDashboard = () => {
                 <h1 className="text-4xl font-bold bg-black bg-clip-text text-transparent mb-2">
                   Worker Dashboard
                 </h1>
-                <p className="text-gray-700 text-lg">Welcome back</p>
+                <p className="text-gray-700 text-lg">
+                  Welcome {worker_name}
+                  <br />
+                  Worker Code : {worker_code}
+                  <br />
+                  Center Name : {center_name}
+                </p>
 
                 <div className="flex items-center gap-4 mt-2">
                   <div className="flex items-center gap-2 text-sm text-gray-900">
@@ -980,78 +1110,151 @@ const WorkerDashboard = () => {
 
       {/* 2. ATTENDANCE MODAL */}
       {showAttendanceModal && selectedSchedule && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl animate-in fade-in zoom-in duration-200">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold text-gray-800">
-                Submit Attendance
-              </h2>
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+          <div className="bg-white rounded-3xl p-6 max-w-2xl w-full shadow-2xl animate-in fade-in zoom-in duration-200 flex flex-col max-h-[90vh]">
+            
+            {/* Header */}
+            <div className="flex justify-between items-center mb-4 shrink-0">
+              <div>
+                <h2 className="text-2xl font-bold text-gray-800">Record Visit Details</h2>
+                <div className="flex items-center gap-2 text-sm text-gray-500 mt-1">
+                  <MapPin className="w-4 h-4" />
+                  <span>{selectedSchedule.center?.code || "Center Code"}</span>
+                  <span className="text-gray-300">|</span>
+                  <span>{location}</span>
+                </div>
+              </div>
               <button
                 onClick={() => {
                   setShowAttendanceModal(false);
                   setSelectedSchedule(null);
-                  setUploadedPhoto(null);
+                  setBeneficiaryData({}); // Clear data on close
                 }}
-                className="text-gray-500 hover:text-gray-700 transition-colors"
+                className="text-gray-400 hover:text-gray-600 bg-gray-100 p-2 rounded-full transition-colors"
               >
                 <X className="w-6 h-6" />
               </button>
             </div>
 
-            <div className="space-y-6">
-              <div className="bg-blue-50 rounded-xl p-4">
-                <h3 className="font-semibold text-blue-800">
-                  Center: {selectedSchedule.center?.code || "Unknown Center"}
-                </h3>
-                <p className="text-blue-600">{selectedSchedule.date}</p>
-                <p className="text-sm text-gray-600">
-                  {selectedSchedule.assigned} patients
-                </p>
-              </div>
+            {/* Scrollable Beneficiary List */}
+            <div className="flex-1 overflow-y-auto pr-2 space-y-4 mb-6 custom-scrollbar">
+              {selectedSchedule.tasks && selectedSchedule.tasks.length > 0 ? (
+                selectedSchedule.tasks.map((task) => {
+                  // 👇 KEY CHANGE: Use specific fields from your 'tasks' array
+                  const bId = task.beneficiaryId; 
+                  const bName = task.beneficiaryName;
+                  
+                  const data = beneficiaryData[bId] || {};
+                  const isDone = isBeneficiaryComplete(bId);
 
-              <div className="flex items-center gap-3 text-green-600">
-                <MapPin className="w-5 h-5" />
-                <span className="text-sm">
-                  Location:{" "}
-                  {typeof location !== "undefined"
-                    ? location
-                    : selectedSchedule.center?.code}
-                </span>
-              </div>
+                  return (
+                    <div 
+                      key={bId} 
+                      className={`border rounded-xl p-4 transition-all duration-200 ${
+                        isDone ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200 hover:border-blue-300'
+                      }`}
+                    >
+                      {/* Beneficiary Name Row */}
+                      <div className="flex justify-between items-start mb-4">
+                        <div className="flex gap-3">
+                          <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${isDone ? 'bg-green-200 text-green-700' : 'bg-blue-100 text-blue-700'}`}>
+                             {bName?.charAt(0)}
+                          </div>
+                          <div>
+                            <h4 className="font-bold text-gray-800">{bName}</h4>
+                            <div className="flex flex-col sm:flex-row sm:gap-3 text-xs text-gray-500 mt-1">
+                                <span>ID: {bId}</span>
+                                <span className="hidden sm:inline text-gray-300">|</span>
+                                <span>{task.beneficiaryAddress}</span>
+                            </div>
+                          </div>
+                        </div>
+                        {isDone && (
+                          <div className="bg-green-100 text-green-700 px-2 py-1 rounded text-xs font-bold flex items-center gap-1">
+                            <Check className="w-3 h-3" /> Ready
+                          </div>
+                        )}
+                      </div>
 
-              <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center relative hover:bg-gray-50 transition-colors">
-                {uploadedPhoto ? (
-                  <div className="space-y-2">
-                    <div className="text-green-600">
-                      <Check className="w-8 h-8 mx-auto" />
+                      {/* Inputs Grid */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        
+                        {/* 1. Next Due Date */}
+                        <div className="space-y-1">
+                          <label className="text-xs font-semibold text-gray-500 uppercase">Next Due Date</label>
+                          <div className="relative">
+                            <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                            <input
+                              type="date"
+                              required
+                              className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm bg-white"
+                              onChange={(e) => handleBulkDateChange(bId, e.target.value)}
+                              value={data.nextDueDate || ''}
+                            />
+                          </div>
+                        </div>
+
+                        {/* 2. Photo Upload */}
+                        <div className="space-y-1">
+                          <label className="text-xs font-semibold text-gray-500 uppercase">Proof of Visit</label>
+                          <div className="relative group">
+                            <input
+                              type="file"
+                              accept="image/*"
+                              id={`file-${bId}`}
+                              className="hidden"
+                              onChange={(e) => {
+                                if (e.target.files?.[0]) {
+                                  handleBulkPhotoChange(bId, e.target.files[0]);
+                                }
+                              }}
+                            />
+                            <label
+                              htmlFor={`file-${bId}`}
+                              className={`flex items-center justify-center gap-2 w-full py-2 px-3 border border-dashed rounded-lg cursor-pointer transition-all text-sm
+                                ${data.photo 
+                                  ? 'border-green-500 bg-green-50 text-green-700' 
+                                  : 'border-gray-300 bg-white text-gray-600 hover:bg-white hover:border-blue-400 shadow-sm'
+                                }`}
+                            >
+                              {data.photo ? (
+                                <>
+                                  <Check className="w-4 h-4" />
+                                  <span className="truncate max-w-[120px]">{data.photo.name}</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Camera className="w-4 h-4" />
+                                  <span>Take Photo</span>
+                                </>
+                              )}
+                            </label>
+                          </div>
+                        </div>
+
+                      </div>
                     </div>
-                    <p className="text-sm text-gray-600">
-                      Photo uploaded:{" "}
-                      <span className="font-medium">{uploadedPhoto.name}</span>
-                    </p>
-                  </div>
-                ) : (
-                  <div className="space-y-2 pointer-events-none">
-                    <Camera className="w-8 h-8 mx-auto text-gray-400" />
-                    <p className="text-gray-600">Take/Upload Photo</p>
-                  </div>
-                )}
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handlePhotoUpload}
-                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                />
-              </div>
+                  );
+                })
+              ) : (
+                <div className="text-center py-10 text-gray-500">
+                  No beneficiaries found in this assignment.
+                </div>
+              )}
+            </div>
 
+            {/* Footer / Submit Button */}
+            <div className="pt-4 border-t border-gray-100 shrink-0">
               <button
                 onClick={submitAttendance}
-                disabled={!uploadedPhoto}
-                className="w-full bg-gradient-to-r from-emerald-800 to-teal-800 text-white py-3 px-6 rounded-xl font-semibold hover:shadow-lg transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
+                disabled={Object.keys(beneficiaryData).length === 0}
+                className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 text-white py-3 px-6 rounded-xl font-semibold hover:shadow-lg hover:shadow-emerald-200 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
-                Submit Attendance
+                <Check className="w-5 h-5" />
+                Submit Records ({Object.keys(beneficiaryData).length})
               </button>
             </div>
+
           </div>
         </div>
       )}
